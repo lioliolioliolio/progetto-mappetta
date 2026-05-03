@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I miei posti a Milano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #F5F0E8;
+    --bg2: #EDE8DE;
+    --card: #FDFAF5;
+    --text: #1A1814;
+    --text2: #6B6559;
+    --accent: #C4472A;
+    --accent2: #E8A020;
+    --border: #D8D0C0;
+    --font-display: 'DM Serif Display', Georgia, serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .header-left h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .header-left p {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--bg2); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #a83820; border-color: #a83820; }
+
+  /* LAYOUT */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-top {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text2);
+  }
+
+  .search-input {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 8px 10px 8px 34px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .filters {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.2px;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .spots-count {
+    font-size: 11px;
+    color: var(--text2);
+    padding: 8px 16px 4px;
+  }
+
+  .spots-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .spot-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .spot-card:hover { background: var(--bg); }
+  .spot-card.active { background: #FEF5F2; border-left: 3px solid var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+  }
+
+  .spot-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .spot-price {
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+
+  .spot-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .spot-cat {
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--bg2);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .stars {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  .spot-review {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* MAP */
+  #map {
+    flex: 1;
+    z-index: 1;
+  }
+
+  /* POPUP personalizzato */
+  .leaflet-popup-content-wrapper {
+    background: var(--card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    padding: 0;
+    overflow: hidden;
+  }
+  .leaflet-popup-content {
+    margin: 0;
+    width: 240px !important;
+  }
+  .leaflet-popup-tip { background: var(--card); }
+
+  .popup-inner { padding: 14px; }
+  .popup-name {
+    font-family: var(--font-display);
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .popup-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .popup-cat { font-size: 11px; color: var(--text2); background: var(--bg2); padding: 2px 7px; border-radius: 4px; }
+  .popup-price { font-size: 12px; color: var(--accent2); font-weight: 500; }
+  .popup-stars { font-size: 13px; }
+  .popup-addr { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+  .popup-review { font-size: 12px; color: var(--text); line-height: 1.5; }
+
+  /* MODAL ADMIN */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }
+
+  .modal h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .form-row { margin-bottom: 14px; }
+
+  .form-row label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .form-row input,
+  .form-row textarea,
+  .form-row select {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-row input:focus,
+  .form-row textarea:focus,
+  .form-row select:focus { border-color: var(--accent); }
+
+  .form-row textarea { height: 80px; resize: vertical; }
+
+  .star-row { display: flex; gap: 6px; }
+
+  .star-btn {
+    font-size: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #D8D0C0;
+    padding: 0;
+    transition: color 0.1s, transform 0.1s;
+    line-height: 1;
+  }
+  .star-btn:hover { transform: scale(1.2); }
+  .star-btn.on { color: var(--accent2); }
+
+  .form-row-half {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text2);
+  }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+
+  /* SCROLLBAR */
+  .spots-list::-webkit-scrollbar { width: 4px; }
+  .spots-list::-webkit-scrollbar-track { background: transparent; }
+  .spots-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Marker personalizzato */
+  .custom-marker {
+    width: 32px;
+    height: 32px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .custom-marker span {
+    transform: rotate(45deg);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .cat-ristorante { background: #C4472A; }
+  .cat-pizzeria   { background: #5A8A2A; }
+  .cat-bar        { background: #2A6AB4; }
+  .cat-caffe      { background: #9B6020; }
+  .cat-aperitivo  { background: #7A3AA0; }
+  .cat-gelato     { background: #C4769A; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>I miei posti a Milano</h1>
+    <p id="subtitleCount">Caricamento…</p>
+  </div>
+  <div class="header-right">
+    <button class="btn" onclick="copyLink()">🔗 Condividi link</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Aggiungi posto</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="searchInput" placeholder="Cerca per nome, zona, cucina…" oninput="renderAll()">
+      </div>
+      <div class="filters" id="filters">
+        <button class="chip active" data-cat="all">Tutti</button>
+        <button class="chip" data-cat="Ristorante">Ristorante</button>
+        <button class="chip" data-cat="Pizzeria">Pizzeria</button>
+        <button class="chip" data-cat="Bar">Bar</button>
+        <button class="chip" data-cat="Caffè">Caffè</button>
+        <button class="chip" data-cat="Aperitivo">Aperitivo</button>
+        <button class="chip" data-cat="Gelato">Gelato</button>
+      </div>
+    </div>
+    <div class="spots-count" id="spotsCount"></div>
+    <div class="spots-list" id="spotsList"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- MODAL AGGIUNGI POSTO -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Aggiungi un posto</h2>
+
+    <div class="form-row">
+      <label>Nome del posto *</label>
+      <input id="fName" placeholder="es. Trattoria da Mario">
+    </div>
+
+    <div class="form-row">
+      <label>Indirizzo *</label>
+      <input id="fAddr" placeholder="es. Via Tortona 12, Milano">
+    </div>
+
+    <div class="form-row-half">
+      <div class="form-row" style="margin-bottom:0">
+        <label>Categoria</label>
+        <select id="fCat">
+          <option>Ristorante</option>
+          <option>Pizzeria</option>
+          <option>Bar</option>
+          <option>Caffè</option>
+          <option>Aperitivo</option>
+          <option>Gelato</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label>Prezzo</label>
+        <select id="fPrice">
+          <option value="€">€ — economico</option>
+          <option value="€€" selected>€€ — medio</option>
+          <option value="€€€">€€€ — costoso</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:14px">
+      <label>Voto</label>
+      <div class="star-row" id="starRow">
+        <button class="star-btn" data-v="1">★</button>
+        <button class="star-btn" data-v="2">★</button>
+        <button class="star-btn" data-v="3">★</button>
+        <button class="star-btn" data-v="4">★</button>
+        <button class="star-btn" data-v="5">★</button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>La tua recensione</label>
+      <textarea id="fReview" placeholder="Cosa hai mangiato? Cosa consigli? Atmosfera?"></textarea>
+    </div>
+
+    <div class="form-row">
+      <label>Latitudine *</label>
+      <input id="fLat" placeholder="es. 45.4654" type="number" step="any">
+    </div>
+
+    <div class="form-row">
+      <label>Longitudine *</label>
+      <input id="fLng" placeholder="es. 9.1859" type="number" step="any">
+    </div>
+
+    <p style="font-size:11px; color:var(--text2); margin-top:-8px; margin-bottom:14px">
+      💡 Cerca il posto su <a href="https://www.google.com/maps" target="_blank" style="color:var(--accent)">Google Maps</a>, clicca destro sul pin → "Cosa c'è qui" → copia le coordinate.
+    </p>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveSpot()">Salva posto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATI — aggiungi i tuoi posti qui dentro
+// ============================================================
+let spots = [
+  {
+    id: 1,
+    name: "Trattoria Masuelli San Marco",
+    addr: "Viale Umbria 80",
+    cat: "Ristorante",
+    price: "€€",
+    stars: 5,
+    review: "Cucina milanese autentica al 100%. I mondeghili sono imperdibili, il risotto alla milanese è da lacrime. Ambiente caldo e familiare. Prenota con almeno una settimana di anticipo.",
+    lat: 45.4543,
+    lng: 9.2102
+  },
+  {
+    id: 2,
+    name: "Pizzeria Spontini",
+    addr: "Via Spontini 4",
+    cat: "Pizzeria",
+    price: "€",
+    stars: 4,
+    review: "La pizza al trancio più famosa di Milano. Enorme, croccante sotto e morbida sopra. Perfetta per un pranzo veloce. La fila si muove in fretta.",
+    lat: 45.4720,
+    lng: 9.2050
+  },
+  {
+    id: 3,
+    name: "Bar Basso",
+    addr: "Via Plinio 39",
+    cat: "Bar",
+    price: "€€",
+    stars: 5,
+    review: "Hanno inventato il Negroni Sbagliato. Aperitivo di culto, atmosfera anni '60 bellissima, bicchieri enormi. Un must assoluto.",
+    lat: 45.4735,
+    lng: 9.2138
+  },
+  {
+    id: 4,
+    name: "Caffè Cova",
+    addr: "Via Montenapoleone 8",
+    cat: "Caffè",
+    price: "€€€",
+    stars: 4,
+    review: "Storica pasticceria milanese dal 1817. I panettoni e i marron glacés sono sublimi. Atmosfera elegante, prezzi alti ma l'esperienza vale.",
+    lat: 45.4680,
+    lng: 9.1970
+  },
+  {
+    id: 5,
+    name: "Osteria dell'Acquabella",
+    addr: "Via San Rocco 11",
+    cat: "Ristorante",
+    price: "€€",
+    stars: 5,
+    review: "Ambiente intimo e curato. Il risotto allo zafferano è di un altro livello. Ottimo per una cena romantica o una serata speciale. Vini ottimi.",
+    lat: 45.4510,
+    lng: 9.2180
+  }
+];
+
+// ============================================================
+// MAPPA
+// ============================================================
+const map = L.map('map', { zoomControl: true }).setView([45.4654, 9.1859], 13);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+const catEmoji = {
+  "Ristorante": "🍽",
+  "Pizzeria": "🍕",
+  "Bar": "🍹",
+  "Caffè": "☕",
+  "Aperitivo": "🥂",
+  "Gelato": "🍦"
+};
+
+const catClass = {
+  "Ristorante": "cat-ristorante",
+  "Pizzeria": "cat-pizzeria",
+  "Bar": "cat-bar",
+  "Caffè": "cat-caffe",
+  "Aperitivo": "cat-aperitivo",
+  "Gelato": "cat-gelato"
+};
+
+let markers = {};
+let currentFilter = "all";
+let selectedId = null;
+
+function starsHTML(n, size = 13) {
+  return Array.from({length: 5}, (_, i) =>
+    `<span style="color:${i < n ? '#E8A020' : '#D8D0C0'};font-size:${size}px">★</span>`
+  ).join('');
+}
+
+function makeMarker(spot) {
+  const cls = catClass[spot.cat] || 'cat-ristorante';
+  const emoji = catEmoji[spot.cat] || '📍';
+  const icon = L.divIcon({
+    className: '',
+    html: `<div class="custom-marker ${cls}"><span>${emoji}</span></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -34]
+  });
+
+  const marker = L.marker([spot.lat, spot.lng], { icon })
+    .bindPopup(`
+      <div class="popup-inner">
+        <div class="popup-name">${spot.name}</div>
+        <div class="popup-meta">
+          <span class="popup-cat">${spot.cat}</span>
+          <span class="popup-price">${spot.price}</span>
+          <span class="popup-stars">${starsHTML(spot.stars, 12)}</span>
+        </div>
+        <div class="popup-addr">📍 ${spot.addr}</div>
+        <div class="popup-review">${spot.review}</div>
+      </div>
+    `, { maxWidth: 260 })
+    .addTo(map);
+
+  marker.on('click', () => {
+    selectedId = spot.id;
+    renderList();
+    scrollToCard(spot.id);
+  });
+
+  return marker;
+}
+
+function refreshMarkers() {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+  getFiltered().forEach(spot => {
+    markers[spot.id] = makeMarker(spot);
+  });
+}
+
+// ============================================================
+// LISTA
+// ============================================================
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  return spots.filter(s => {
+    const matchCat = currentFilter === 'all' || s.cat === currentFilter;
+    const matchQ = !q || s.name.toLowerCase().includes(q) || s.addr.toLowerCase().includes(q) || s.review.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+}
+
+function renderList() {
+  const filtered = getFiltered();
+  const list = document.getElementById('spotsList');
+  const count = document.getElementById('spotsCount');
+  count.textContent = `${filtered.length} posto${filtered.length !== 1 ? 'i' : ''}`;
+
+  const subtitle = document.getElementById('subtitleCount');
+  subtitle.textContent = `${spots.length} posti salvati`;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><p>Nessun posto trovato.<br>Prova a cambiare filtro o ricerca.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => `
+    <div class="spot-card${selectedId === s.id ? ' active' : ''}" id="card-${s.id}" onclick="selectSpot(${s.id})">
+      <div class="card-top">
+        <span class="spot-name">${s.name}</span>
+        <span class="spot-price">${s.price}</span>
+      </div>
+      <div class="spot-meta">
+        <span class="spot-cat">${s.cat}</span>
+        <span class="stars">${starsHTML(s.stars)}</span>
+      </div>
+      <div class="spot-review">${s.review}</div>
+    </div>
+  `).join('');
+}
+
+function selectSpot(id) {
+  selectedId = id;
+  renderList();
+  const spot = spots.find(s => s.id === id);
+  if (spot && markers[id]) {
+    map.setView([spot.lat, spot.lng], 15, { animate: true });
+    markers[id].openPopup();
+  }
+}
+
+function scrollToCard(id) {
+  setTimeout(() => {
+    const card = document.getElementById('card-' + id);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+
+// ============================================================
+// FILTRI
+// ============================================================
+document.getElementById('filters').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  currentFilter = chip.dataset.cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.cat === currentFilter));
+  renderAll();
+});
+
+function renderAll() {
+  renderList();
+  refreshMarkers();
+}
+
+// ============================================================
+// MODAL ADMIN
+// ============================================================
+let currentRating = 0;
+
+function openModal() {
+  currentRating = 0;
+  ['fName', 'fAddr', 'fReview', 'fLat', 'fLng'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fCat').value = 'Ristorante';
+  document.getElementById('fPrice').value = '€€';
+  updateStars();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.getElementById('starRow').addEventListener('click', e => {
+  const btn = e.target.closest('.star-btn');
+  if (!btn) return;
+  currentRating = parseInt(btn.dataset.v);
+  updateStars();
+});
+
+function updateStars() {
+  document.querySelectorAll('.star-btn').forEach(b => {
+    b.classList.toggle('on', parseInt(b.dataset.v) <= currentRating);
+  });
+}
+
+function saveSpot() {
+  const name = document.getElementById('fName').value.trim();
+  const addr = document.getElementById('fAddr').value.trim();
+  const lat  = parseFloat(document.getElementById('fLat').value);
+  const lng  = parseFloat(document.getElementById('fLng').value);
+
+  if (!name) return alert('Inserisci il nome del posto.');
+  if (!addr) return alert('Inserisci l\'indirizzo.');
+  if (isNaN(lat) || isNaN(lng)) return alert('Inserisci latitudine e longitudine valide.\n\nCercale su Google Maps: clicca destro sul posto → "Cosa c\'è qui".');
+
+  const newSpot = {
+    id: Date.now(),
+    name,
+    addr,
+    cat: document.getElementById('fCat').value,
+    price: document.getElementById('fPrice').value,
+    stars: currentRating || 3,
+    review: document.getElementById('fReview').value.trim() || 'Nessuna recensione ancora.',
+    lat,
+    lng
+  };
+
+  spots.push(newSpot);
+  closeModal();
+  renderAll();
+  selectSpot(newSpot.id);
+}
+
+// Chiudi modal cliccando fuori
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+// ============================================================
+// CONDIVIDI
+// ============================================================
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    alert('Link copiato! 🎉\nCondividilo con i tuoi amici.');
+  }).catch(() => {
+    prompt('Copia questo link:', window.location.href);
+  });
+}
+
+// ============================================================
+// AVVIO
+// ============================================================
+renderAll();
+</script>
+</body>
+</html>
