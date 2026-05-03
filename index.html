@@ -395,6 +395,59 @@
   .cat-caffe      { background: #9B6020; }
   .cat-aperitivo  { background: #7A3AA0; }
   .cat-gelato     { background: #C4769A; }
+
+  /* AUTOCOMPLETE RICERCA */
+  .suggestions-box {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    z-index: 200;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: var(--bg2); }
+
+  .suggestion-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .suggestion-addr {
+    font-size: 11px;
+    color: var(--text2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .suggestion-loading {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  .suggestion-empty {
+    padding: 12px;
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -438,15 +491,29 @@
   <div class="modal">
     <h2>Aggiungi un posto</h2>
 
+    <!-- RICERCA LUOGO -->
+    <div class="form-row" style="position:relative">
+      <label>Cerca il posto 🔍</label>
+      <input id="fSearch" placeholder="es. Pizzeria Spontini Milano" autocomplete="off" oninput="onSearchInput()" onfocus="showSuggestions()">
+      <div id="suggestions" class="suggestions-box" style="display:none"></div>
+    </div>
+
+    <!-- RISULTATO SELEZIONATO -->
+    <div id="selectedPlace" style="display:none; margin-bottom:14px; padding:10px 12px; background:var(--bg2); border-radius:6px; border:1px solid var(--border)">
+      <div style="font-size:12px; color:var(--text2); margin-bottom:2px">Posto selezionato</div>
+      <div id="selectedPlaceName" style="font-size:13px; font-weight:500; color:var(--text)"></div>
+      <div id="selectedPlaceAddr" style="font-size:12px; color:var(--text2); margin-top:2px"></div>
+    </div>
+
+    <!-- NOME MODIFICABILE -->
     <div class="form-row">
-      <label>Nome del posto *</label>
+      <label>Nome da mostrare sul sito *</label>
       <input id="fName" placeholder="es. Trattoria da Mario">
     </div>
 
-    <div class="form-row">
-      <label>Indirizzo *</label>
-      <input id="fAddr" placeholder="es. Via Tortona 12, Milano">
-    </div>
+    <input type="hidden" id="fAddr">
+    <input type="hidden" id="fLat">
+    <input type="hidden" id="fLng">
 
     <div class="form-row-half">
       <div class="form-row" style="margin-bottom:0">
@@ -485,20 +552,6 @@
       <label>La tua recensione</label>
       <textarea id="fReview" placeholder="Cosa hai mangiato? Cosa consigli? Atmosfera?"></textarea>
     </div>
-
-    <div class="form-row">
-      <label>Latitudine *</label>
-      <input id="fLat" placeholder="es. 45.4654" type="number" step="any">
-    </div>
-
-    <div class="form-row">
-      <label>Longitudine *</label>
-      <input id="fLng" placeholder="es. 9.1859" type="number" step="any">
-    </div>
-
-    <p style="font-size:11px; color:var(--text2); margin-top:-8px; margin-bottom:14px">
-      💡 Cerca il posto su <a href="https://www.google.com/maps" target="_blank" style="color:var(--accent)">Google Maps</a>, clicca destro sul pin → "Cosa c'è qui" → copia le coordinate.
-    </p>
 
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Annulla</button>
@@ -732,15 +785,24 @@ let currentRating = 0;
 
 function openModal() {
   currentRating = 0;
-  ['fName', 'fAddr', 'fReview', 'fLat', 'fLng'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('fSearch').value = '';
+  document.getElementById('fName').value = '';
+  document.getElementById('fAddr').value = '';
+  document.getElementById('fLat').value = '';
+  document.getElementById('fLng').value = '';
+  document.getElementById('fReview').value = '';
   document.getElementById('fCat').value = 'Ristorante';
   document.getElementById('fPrice').value = '€€';
+  document.getElementById('selectedPlace').style.display = 'none';
+  document.getElementById('suggestions').style.display = 'none';
   updateStars();
   document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('fSearch').focus(), 100);
 }
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('suggestions').style.display = 'none';
 }
 
 document.getElementById('starRow').addEventListener('click', e => {
@@ -756,15 +818,117 @@ function updateStars() {
   });
 }
 
+// GEOCODING con Nominatim (OpenStreetMap) — completamente gratuito
+let searchTimer = null;
+
+function onSearchInput() {
+  const q = document.getElementById('fSearch').value.trim();
+  clearTimeout(searchTimer);
+  if (q.length < 3) {
+    document.getElementById('suggestions').style.display = 'none';
+    return;
+  }
+  // Mostra "sto cercando..."
+  const box = document.getElementById('suggestions');
+  box.innerHTML = '<div class="suggestion-loading">Sto cercando…</div>';
+  box.style.display = 'block';
+
+  // Aspetta 400ms prima di fare la ricerca (evita troppe richieste)
+  searchTimer = setTimeout(() => searchPlaces(q), 400);
+}
+
+function showSuggestions() {
+  const box = document.getElementById('suggestions');
+  if (box.innerHTML.trim() && document.getElementById('fSearch').value.length >= 3) {
+    box.style.display = 'block';
+  }
+}
+
+async function searchPlaces(query) {
+  try {
+    // Aggiungo "Milano" per restringere i risultati alla città
+    const q = query.toLowerCase().includes('milan') ? query : query + ' Milano';
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=it`;
+
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'it' }
+    });
+    const results = await res.json();
+
+    const box = document.getElementById('suggestions');
+
+    if (results.length === 0) {
+      box.innerHTML = '<div class="suggestion-empty">Nessun risultato. Prova con un nome più specifico.</div>';
+      return;
+    }
+
+    box.innerHTML = results.map((r, i) => {
+      // Prendo il nome principale e l'indirizzo
+      const name = r.name || r.display_name.split(',')[0];
+      const addr = r.display_name;
+      return `
+        <div class="suggestion-item" onclick="selectPlace(${i})" data-idx="${i}">
+          <div class="suggestion-name">${name}</div>
+          <div class="suggestion-addr">${addr}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Salvo i risultati per recuperarli al click
+    box._results = results;
+    box.style.display = 'block';
+
+  } catch (err) {
+    const box = document.getElementById('suggestions');
+    box.innerHTML = '<div class="suggestion-empty">Errore di rete. Riprova.</div>';
+  }
+}
+
+function selectPlace(idx) {
+  const box = document.getElementById('suggestions');
+  const r = box._results[idx];
+  if (!r) return;
+
+  // Ricavo nome e indirizzo pulito
+  const name = r.name || r.display_name.split(',')[0];
+  const addrParts = r.display_name.split(', ');
+  // Prendo le prime 3 parti per l'indirizzo (via, numero, città)
+  const shortAddr = addrParts.slice(0, 3).join(', ');
+
+  // Popolo i campi
+  document.getElementById('fName').value = name;
+  document.getElementById('fAddr').value = shortAddr;
+  document.getElementById('fLat').value = r.lat;
+  document.getElementById('fLng').value = r.lon;
+
+  // Mostro il riepilogo
+  document.getElementById('selectedPlaceName').textContent = name;
+  document.getElementById('selectedPlaceAddr').textContent = shortAddr;
+  document.getElementById('selectedPlace').style.display = 'block';
+
+  // Chiudo i suggerimenti
+  box.style.display = 'none';
+  document.getElementById('fSearch').value = name;
+
+  // Focus sulla recensione
+  setTimeout(() => document.getElementById('fReview').focus(), 100);
+}
+
+// Chiudi suggerimenti cliccando fuori
+document.addEventListener('click', e => {
+  if (!e.target.closest('#fSearch') && !e.target.closest('#suggestions')) {
+    document.getElementById('suggestions').style.display = 'none';
+  }
+});
+
 function saveSpot() {
   const name = document.getElementById('fName').value.trim();
   const addr = document.getElementById('fAddr').value.trim();
   const lat  = parseFloat(document.getElementById('fLat').value);
   const lng  = parseFloat(document.getElementById('fLng').value);
 
-  if (!name) return alert('Inserisci il nome del posto.');
-  if (!addr) return alert('Inserisci l\'indirizzo.');
-  if (isNaN(lat) || isNaN(lng)) return alert('Inserisci latitudine e longitudine valide.\n\nCercale su Google Maps: clicca destro sul posto → "Cosa c\'è qui".');
+  if (!name) return alert('Cerca e seleziona un posto dalla lista, poi puoi modificare il nome.');
+  if (!addr || isNaN(lat) || isNaN(lng)) return alert('Seleziona un posto dalla lista di suggerimenti per ottenere le coordinate.');
 
   const newSpot = {
     id: Date.now(),
