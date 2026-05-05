@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root {
     --bg: #F5F0E8;
@@ -21,242 +23,66 @@
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-body); background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  body {
-    font-family: var(--font-body);
-    background: var(--bg);
-    color: var(--text);
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  /* LOADING */
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 14px; transition: opacity 0.4s; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--text2); font-family: var(--font-body); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 99px; font-size: 13px; font-family: var(--font-body); z-index: 9000; transition: transform 0.3s; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
 
   /* HEADER */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    z-index: 100;
-  }
-
-  .header-left h1 {
-    font-family: var(--font-display);
-    font-size: 22px;
-    color: var(--text);
-    letter-spacing: -0.3px;
-  }
-
-  .header-left p {
-    font-size: 12px;
-    color: var(--text2);
-    margin-top: 1px;
-  }
-
-  .header-right {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .btn {
-    font-family: var(--font-body);
-    font-size: 13px;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 100; }
+  .header-left h1 { font-family: var(--font-display); font-size: 22px; color: var(--text); letter-spacing: -0.3px; }
+  .header-left p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .btn { font-family: var(--font-body); font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; transition: all 0.15s; }
   .btn:hover { background: var(--bg2); }
-
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-  }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
   .btn-primary:hover { background: #a83820; border-color: #a83820; }
 
   /* LAYOUT */
-  .layout {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+  .layout { display: flex; flex: 1; overflow: hidden; }
 
   /* SIDEBAR */
-  .sidebar {
-    width: 320px;
-    flex-shrink: 0;
-    background: var(--card);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .sidebar-top {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .search-wrap {
-    position: relative;
-  }
-
-  .search-wrap svg {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text2);
-  }
-
-  .search-input {
-    width: 100%;
-    font-family: var(--font-body);
-    font-size: 13px;
-    padding: 8px 10px 8px 34px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    outline: none;
-  }
+  .sidebar { width: 320px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-top { padding: 16px; border-bottom: 1px solid var(--border); }
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text2); }
+  .search-input { width: 100%; font-family: var(--font-body); font-size: 13px; padding: 8px 10px 8px 34px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; }
   .search-input:focus { border-color: var(--accent); }
-
-  .filters {
-    display: flex;
-    gap: 6px;
-    margin-top: 10px;
-    flex-wrap: wrap;
-  }
-
-  .chip {
-    font-family: var(--font-body);
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 99px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text2);
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.2px;
-  }
+  .filters { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .chip { font-family: var(--font-body); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; letter-spacing: 0.2px; }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
   .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
-
-  .spots-count {
-    font-size: 11px;
-    color: var(--text2);
-    padding: 8px 16px 4px;
-  }
-
-  .spots-list {
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .spot-card {
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
+  .spots-count { font-size: 11px; color: var(--text2); padding: 8px 16px 4px; }
+  .spots-list { flex: 1; overflow-y: auto; }
+  .spot-card { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
   .spot-card:hover { background: var(--bg); }
   .spot-card.active { background: #FEF5F2; border-left: 3px solid var(--accent); }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 4px;
-  }
-
-  .spot-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    line-height: 1.3;
-  }
-
-  .spot-price {
-    font-size: 12px;
-    color: var(--accent2);
-    font-weight: 500;
-    flex-shrink: 0;
-    margin-left: 8px;
-  }
-
-  .spot-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .spot-cat {
-    font-size: 11px;
-    color: var(--text2);
-    background: var(--bg2);
-    padding: 2px 7px;
-    border-radius: 4px;
-  }
-
-  .stars {
-    font-size: 12px;
-    letter-spacing: 1px;
-  }
-
-  .spot-review {
-    font-size: 12px;
-    color: var(--text2);
-    line-height: 1.5;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .spot-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .spot-price { font-size: 12px; color: var(--accent2); font-weight: 500; flex-shrink: 0; margin-left: 8px; }
+  .spot-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .spot-cat { font-size: 11px; color: var(--text2); background: var(--bg2); padding: 2px 7px; border-radius: 4px; }
+  .stars { font-size: 12px; letter-spacing: 1px; }
+  .spot-review { font-size: 12px; color: var(--text2); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
   /* MAP */
-  #map {
-    flex: 1;
-    z-index: 1;
-  }
+  #map { flex: 1; z-index: 1; }
 
-  /* POPUP personalizzato */
-  .leaflet-popup-content-wrapper {
-    background: var(--card);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-    padding: 0;
-    overflow: hidden;
-  }
-  .leaflet-popup-content {
-    margin: 0;
-    width: 240px !important;
-  }
+  /* POPUP */
+  .leaflet-popup-content-wrapper { background: var(--card); border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.12); padding: 0; overflow: hidden; }
+  .leaflet-popup-content { margin: 0; width: 240px !important; }
   .leaflet-popup-tip { background: var(--card); }
-
   .popup-inner { padding: 14px; }
-  .popup-name {
-    font-family: var(--font-display);
-    font-size: 16px;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
+  .popup-name { font-family: var(--font-display); font-size: 16px; color: var(--text); margin-bottom: 4px; }
   .popup-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
   .popup-cat { font-size: 11px; color: var(--text2); background: var(--bg2); padding: 2px 7px; border-radius: 4px; }
   .popup-price { font-size: 12px; color: var(--accent2); font-weight: 500; }
@@ -264,106 +90,25 @@
   .popup-addr { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
   .popup-review { font-size: 12px; color: var(--text); line-height: 1.5; }
 
-  /* MODAL ADMIN */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: var(--card);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    padding: 24px;
-    width: 400px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-  }
-
-  .modal h2 {
-    font-family: var(--font-display);
-    font-size: 20px;
-    margin-bottom: 20px;
-    color: var(--text);
-  }
-
+  .modal { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+  .modal h2 { font-family: var(--font-display); font-size: 20px; margin-bottom: 20px; color: var(--text); }
   .form-row { margin-bottom: 14px; }
-
-  .form-row label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text2);
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-  }
-
-  .form-row input,
-  .form-row textarea,
-  .form-row select {
-    width: 100%;
-    font-family: var(--font-body);
-    font-size: 13px;
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .form-row input:focus,
-  .form-row textarea:focus,
-  .form-row select:focus { border-color: var(--accent); }
-
+  .form-row label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-row input, .form-row textarea, .form-row select { width: 100%; font-family: var(--font-body); font-size: 13px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s; }
+  .form-row input:focus, .form-row textarea:focus, .form-row select:focus { border-color: var(--accent); }
   .form-row textarea { height: 80px; resize: vertical; }
-
   .star-row { display: flex; gap: 6px; }
-
-  .star-btn {
-    font-size: 24px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #D8D0C0;
-    padding: 0;
-    transition: color 0.1s, transform 0.1s;
-    line-height: 1;
-  }
+  .star-btn { font-size: 24px; background: none; border: none; cursor: pointer; color: #D8D0C0; padding: 0; transition: color 0.1s, transform 0.1s; line-height: 1; }
   .star-btn:hover { transform: scale(1.2); }
   .star-btn.on { color: var(--accent2); }
-
-  .form-row-half {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
+  .form-row-half { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 
   /* EMPTY STATE */
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
-    color: var(--text2);
-  }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--text2); }
   .empty-state p { font-size: 13px; line-height: 1.6; }
 
   /* SCROLLBAR */
@@ -371,24 +116,9 @@
   .spots-list::-webkit-scrollbar-track { background: transparent; }
   .spots-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-  /* Marker personalizzato */
-  .custom-marker {
-    width: 32px;
-    height: 32px;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  }
-  .custom-marker span {
-    transform: rotate(45deg);
-    font-size: 14px;
-    line-height: 1;
-  }
-
+  /* MARKER */
+  .custom-marker { width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+  .custom-marker span { transform: rotate(45deg); font-size: 14px; line-height: 1; }
   .cat-ristorante { background: #C4472A; }
   .cat-pizzeria   { background: #5A8A2A; }
   .cat-bar        { background: #2A6AB4; }
@@ -396,61 +126,26 @@
   .cat-aperitivo  { background: #7A3AA0; }
   .cat-gelato     { background: #C4769A; }
 
-  /* AUTOCOMPLETE RICERCA */
-  .suggestions-box {
-    position: absolute;
-    top: 100%;
-    left: 0; right: 0;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    z-index: 200;
-    max-height: 220px;
-    overflow-y: auto;
-  }
-
-  .suggestion-item {
-    padding: 10px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border);
-    transition: background 0.1s;
-  }
+  /* AUTOCOMPLETE */
+  .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: var(--card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); z-index: 200; max-height: 220px; overflow-y: auto; }
+  .suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
   .suggestion-item:last-child { border-bottom: none; }
   .suggestion-item:hover { background: var(--bg2); }
-
-  .suggestion-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 2px;
-  }
-
-  .suggestion-addr {
-    font-size: 11px;
-    color: var(--text2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .suggestion-loading {
-    padding: 12px;
-    font-size: 12px;
-    color: var(--text2);
-    text-align: center;
-  }
-
-  .suggestion-empty {
-    padding: 12px;
-    font-size: 12px;
-    color: var(--text2);
-    text-align: center;
-  }
+  .suggestion-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .suggestion-addr { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .suggestion-loading, .suggestion-empty { padding: 12px; font-size: 12px; color: var(--text2); text-align: center; }
 </style>
 </head>
 <body>
+
+<!-- LOADING SCREEN -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Caricamento posti…</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
 
 <header>
   <div class="header-left">
@@ -491,21 +186,18 @@
   <div class="modal">
     <h2>Aggiungi un posto</h2>
 
-    <!-- RICERCA LUOGO -->
     <div class="form-row" style="position:relative">
       <label>Cerca il posto 🔍</label>
       <input id="fSearch" placeholder="es. Pizzeria Spontini Milano" autocomplete="off" oninput="onSearchInput()" onfocus="showSuggestions()">
       <div id="suggestions" class="suggestions-box" style="display:none"></div>
     </div>
 
-    <!-- RISULTATO SELEZIONATO -->
     <div id="selectedPlace" style="display:none; margin-bottom:14px; padding:10px 12px; background:var(--bg2); border-radius:6px; border:1px solid var(--border)">
       <div style="font-size:12px; color:var(--text2); margin-bottom:2px">Posto selezionato</div>
       <div id="selectedPlaceName" style="font-size:13px; font-weight:500; color:var(--text)"></div>
       <div id="selectedPlaceAddr" style="font-size:12px; color:var(--text2); margin-top:2px"></div>
     </div>
 
-    <!-- NOME MODIFICABILE -->
     <div class="form-row">
       <label>Nome da mostrare sul sito *</label>
       <input id="fName" placeholder="es. Trattoria da Mario">
@@ -562,102 +254,41 @@
 
 <script>
 // ============================================================
-// DATI — aggiungi i tuoi posti qui dentro
+// FIREBASE — il "quaderno su cloud" dove salviamo i posti
 // ============================================================
-let spots = [
-  {
-    id: 1,
-    name: "Trattoria Masuelli San Marco",
-    addr: "Viale Umbria 80",
-    cat: "Ristorante",
-    price: "€€",
-    stars: 5,
-    review: "Cucina milanese autentica al 100%. I mondeghili sono imperdibili, il risotto alla milanese è da lacrime. Ambiente caldo e familiare. Prenota con almeno una settimana di anticipo.",
-    lat: 45.4543,
-    lng: 9.2102
-  },
-  {
-    id: 2,
-    name: "Pizzeria Spontini",
-    addr: "Via Spontini 4",
-    cat: "Pizzeria",
-    price: "€",
-    stars: 4,
-    review: "La pizza al trancio più famosa di Milano. Enorme, croccante sotto e morbida sopra. Perfetta per un pranzo veloce. La fila si muove in fretta.",
-    lat: 45.4720,
-    lng: 9.2050
-  },
-  {
-    id: 3,
-    name: "Bar Basso",
-    addr: "Via Plinio 39",
-    cat: "Bar",
-    price: "€€",
-    stars: 5,
-    review: "Hanno inventato il Negroni Sbagliato. Aperitivo di culto, atmosfera anni '60 bellissima, bicchieri enormi. Un must assoluto.",
-    lat: 45.4735,
-    lng: 9.2138
-  },
-  {
-    id: 4,
-    name: "Caffè Cova",
-    addr: "Via Montenapoleone 8",
-    cat: "Caffè",
-    price: "€€€",
-    stars: 4,
-    review: "Storica pasticceria milanese dal 1817. I panettoni e i marron glacés sono sublimi. Atmosfera elegante, prezzi alti ma l'esperienza vale.",
-    lat: 45.4680,
-    lng: 9.1970
-  },
-  {
-    id: 5,
-    name: "Osteria dell'Acquabella",
-    addr: "Via San Rocco 11",
-    cat: "Ristorante",
-    price: "€€",
-    stars: 5,
-    review: "Ambiente intimo e curato. Il risotto allo zafferano è di un altro livello. Ottimo per una cena romantica o una serata speciale. Vini ottimi.",
-    lat: 45.4510,
-    lng: 9.2180
-  }
-];
+const firebaseConfig = {
+  apiKey: "AIzaSyAM4e_WeacF_3YeiUytaQd4rl0sMu0EwSI",
+  authDomain: "mappetta-9d25c.firebaseapp.com",
+  projectId: "mappetta-9d25c",
+  storageBucket: "mappetta-9d25c.firebasestorage.app",
+  messagingSenderId: "520166113779",
+  appId: "1:520166113779:web:6a62030466b0cd6dc81286"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const spotsCollection = db.collection('spots');
+
+let spots = [];
 
 // ============================================================
 // MAPPA
 // ============================================================
 const map = L.map('map', { zoomControl: true }).setView([45.4654, 9.1859], 13);
-
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution: '© OpenStreetMap © CartoDB',
-  subdomains: 'abcd',
-  maxZoom: 19
+  subdomains: 'abcd', maxZoom: 19
 }).addTo(map);
 
-const catEmoji = {
-  "Ristorante": "🍽",
-  "Pizzeria": "🍕",
-  "Bar": "🍹",
-  "Caffè": "☕",
-  "Aperitivo": "🥂",
-  "Gelato": "🍦"
-};
-
-const catClass = {
-  "Ristorante": "cat-ristorante",
-  "Pizzeria": "cat-pizzeria",
-  "Bar": "cat-bar",
-  "Caffè": "cat-caffe",
-  "Aperitivo": "cat-aperitivo",
-  "Gelato": "cat-gelato"
-};
+const catEmoji = { "Ristorante":"🍽","Pizzeria":"🍕","Bar":"🍹","Caffè":"☕","Aperitivo":"🥂","Gelato":"🍦" };
+const catClass = { "Ristorante":"cat-ristorante","Pizzeria":"cat-pizzeria","Bar":"cat-bar","Caffè":"cat-caffe","Aperitivo":"cat-aperitivo","Gelato":"cat-gelato" };
 
 let markers = {};
 let currentFilter = "all";
 let selectedId = null;
 
 function starsHTML(n, size = 13) {
-  return Array.from({length: 5}, (_, i) =>
-    `<span style="color:${i < n ? '#E8A020' : '#D8D0C0'};font-size:${size}px">★</span>`
+  return Array.from({length:5}, (_,i) =>
+    `<span style="color:${i<n?'#E8A020':'#D8D0C0'};font-size:${size}px">★</span>`
   ).join('');
 }
 
@@ -667,12 +298,9 @@ function makeMarker(spot) {
   const icon = L.divIcon({
     className: '',
     html: `<div class="custom-marker ${cls}"><span>${emoji}</span></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -34]
+    iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-34]
   });
-
-  const marker = L.marker([spot.lat, spot.lng], { icon })
+  const marker = L.marker([spot.lat, spot.lng], {icon})
     .bindPopup(`
       <div class="popup-inner">
         <div class="popup-name">${spot.name}</div>
@@ -683,25 +311,16 @@ function makeMarker(spot) {
         </div>
         <div class="popup-addr">📍 ${spot.addr}</div>
         <div class="popup-review">${spot.review}</div>
-      </div>
-    `, { maxWidth: 260 })
+      </div>`, {maxWidth:260})
     .addTo(map);
-
-  marker.on('click', () => {
-    selectedId = spot.id;
-    renderList();
-    scrollToCard(spot.id);
-  });
-
+  marker.on('click', () => { selectedId = spot.id; renderList(); scrollToCard(spot.id); });
   return marker;
 }
 
 function refreshMarkers() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
-  getFiltered().forEach(spot => {
-    markers[spot.id] = makeMarker(spot);
-  });
+  getFiltered().forEach(spot => { markers[spot.id] = makeMarker(spot); });
 }
 
 // ============================================================
@@ -718,31 +337,20 @@ function getFiltered() {
 
 function renderList() {
   const filtered = getFiltered();
+  document.getElementById('spotsCount').textContent = `${filtered.length} posto${filtered.length !== 1 ? 'i' : ''}`;
+  document.getElementById('subtitleCount').textContent = `${spots.length} posti salvati`;
+
   const list = document.getElementById('spotsList');
-  const count = document.getElementById('spotsCount');
-  count.textContent = `${filtered.length} posto${filtered.length !== 1 ? 'i' : ''}`;
-
-  const subtitle = document.getElementById('subtitleCount');
-  subtitle.textContent = `${spots.length} posti salvati`;
-
   if (filtered.length === 0) {
     list.innerHTML = `<div class="empty-state"><p>Nessun posto trovato.<br>Prova a cambiare filtro o ricerca.</p></div>`;
     return;
   }
-
   list.innerHTML = filtered.map(s => `
-    <div class="spot-card${selectedId === s.id ? ' active' : ''}" id="card-${s.id}" onclick="selectSpot(${s.id})">
-      <div class="card-top">
-        <span class="spot-name">${s.name}</span>
-        <span class="spot-price">${s.price}</span>
-      </div>
-      <div class="spot-meta">
-        <span class="spot-cat">${s.cat}</span>
-        <span class="stars">${starsHTML(s.stars)}</span>
-      </div>
+    <div class="spot-card${selectedId===s.id?' active':''}" id="card-${s.id}" onclick="selectSpot('${s.id}')">
+      <div class="card-top"><span class="spot-name">${s.name}</span><span class="spot-price">${s.price}</span></div>
+      <div class="spot-meta"><span class="spot-cat">${s.cat}</span><span class="stars">${starsHTML(s.stars)}</span></div>
       <div class="spot-review">${s.review}</div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function selectSpot(id) {
@@ -750,7 +358,7 @@ function selectSpot(id) {
   renderList();
   const spot = spots.find(s => s.id === id);
   if (spot && markers[id]) {
-    map.setView([spot.lat, spot.lng], 15, { animate: true });
+    map.setView([spot.lat, spot.lng], 15, {animate: true});
     markers[id].openPopup();
   }
 }
@@ -758,9 +366,11 @@ function selectSpot(id) {
 function scrollToCard(id) {
   setTimeout(() => {
     const card = document.getElementById('card-' + id);
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (card) card.scrollIntoView({behavior:'smooth', block:'nearest'});
   }, 100);
 }
+
+function renderAll() { renderList(); refreshMarkers(); }
 
 // ============================================================
 // FILTRI
@@ -773,9 +383,31 @@ document.getElementById('filters').addEventListener('click', e => {
   renderAll();
 });
 
-function renderAll() {
-  renderList();
-  refreshMarkers();
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// CARICA POSTI DA FIREBASE
+// Ogni volta che il sito si apre, legge tutti i posti dal database
+// e li mette sulla mappa — in tempo reale, da qualsiasi dispositivo
+// ============================================================
+function loadSpots() {
+  spotsCollection.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    spots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderAll();
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }, err => {
+    console.error(err);
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    showToast('Errore di connessione al database');
+  });
 }
 
 // ============================================================
@@ -818,69 +450,45 @@ function updateStars() {
   });
 }
 
-// GEOCODING con Nominatim (OpenStreetMap) — completamente gratuito
+// ============================================================
+// GEOCODING — cerca il posto su OpenStreetMap
+// ============================================================
 let searchTimer = null;
 
 function onSearchInput() {
   const q = document.getElementById('fSearch').value.trim();
   clearTimeout(searchTimer);
-  if (q.length < 3) {
-    document.getElementById('suggestions').style.display = 'none';
-    return;
-  }
-  // Mostra "sto cercando..."
+  if (q.length < 3) { document.getElementById('suggestions').style.display = 'none'; return; }
   const box = document.getElementById('suggestions');
   box.innerHTML = '<div class="suggestion-loading">Sto cercando…</div>';
   box.style.display = 'block';
-
-  // Aspetta 400ms prima di fare la ricerca (evita troppe richieste)
   searchTimer = setTimeout(() => searchPlaces(q), 400);
 }
 
 function showSuggestions() {
   const box = document.getElementById('suggestions');
-  if (box.innerHTML.trim() && document.getElementById('fSearch').value.length >= 3) {
-    box.style.display = 'block';
-  }
+  if (box.innerHTML.trim() && document.getElementById('fSearch').value.length >= 3) box.style.display = 'block';
 }
 
 async function searchPlaces(query) {
   try {
-    // Aggiungo "Milano" per restringere i risultati alla città
     const q = query.toLowerCase().includes('milan') ? query : query + ' Milano';
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=it`;
-
-    const res = await fetch(url, {
-      headers: { 'Accept-Language': 'it' }
-    });
+    const res = await fetch(url, { headers: { 'Accept-Language': 'it' } });
     const results = await res.json();
-
     const box = document.getElementById('suggestions');
-
-    if (results.length === 0) {
-      box.innerHTML = '<div class="suggestion-empty">Nessun risultato. Prova con un nome più specifico.</div>';
-      return;
-    }
-
+    if (results.length === 0) { box.innerHTML = '<div class="suggestion-empty">Nessun risultato. Prova con un nome più specifico.</div>'; return; }
     box.innerHTML = results.map((r, i) => {
-      // Prendo il nome principale e l'indirizzo
       const name = r.name || r.display_name.split(',')[0];
-      const addr = r.display_name;
-      return `
-        <div class="suggestion-item" onclick="selectPlace(${i})" data-idx="${i}">
-          <div class="suggestion-name">${name}</div>
-          <div class="suggestion-addr">${addr}</div>
-        </div>
-      `;
+      return `<div class="suggestion-item" onclick="selectPlace(${i})">
+        <div class="suggestion-name">${name}</div>
+        <div class="suggestion-addr">${r.display_name}</div>
+      </div>`;
     }).join('');
-
-    // Salvo i risultati per recuperarli al click
     box._results = results;
     box.style.display = 'block';
-
-  } catch (err) {
-    const box = document.getElementById('suggestions');
-    box.innerHTML = '<div class="suggestion-empty">Errore di rete. Riprova.</div>';
+  } catch(err) {
+    document.getElementById('suggestions').innerHTML = '<div class="suggestion-empty">Errore di rete. Riprova.</div>';
   }
 }
 
@@ -888,67 +496,67 @@ function selectPlace(idx) {
   const box = document.getElementById('suggestions');
   const r = box._results[idx];
   if (!r) return;
-
-  // Ricavo nome e indirizzo pulito
   const name = r.name || r.display_name.split(',')[0];
-  const addrParts = r.display_name.split(', ');
-  // Prendo le prime 3 parti per l'indirizzo (via, numero, città)
-  const shortAddr = addrParts.slice(0, 3).join(', ');
-
-  // Popolo i campi
+  const shortAddr = r.display_name.split(', ').slice(0, 3).join(', ');
   document.getElementById('fName').value = name;
   document.getElementById('fAddr').value = shortAddr;
   document.getElementById('fLat').value = r.lat;
   document.getElementById('fLng').value = r.lon;
-
-  // Mostro il riepilogo
   document.getElementById('selectedPlaceName').textContent = name;
   document.getElementById('selectedPlaceAddr').textContent = shortAddr;
   document.getElementById('selectedPlace').style.display = 'block';
-
-  // Chiudo i suggerimenti
   box.style.display = 'none';
   document.getElementById('fSearch').value = name;
-
-  // Focus sulla recensione
   setTimeout(() => document.getElementById('fReview').focus(), 100);
 }
 
-// Chiudi suggerimenti cliccando fuori
 document.addEventListener('click', e => {
-  if (!e.target.closest('#fSearch') && !e.target.closest('#suggestions')) {
+  if (!e.target.closest('#fSearch') && !e.target.closest('#suggestions'))
     document.getElementById('suggestions').style.display = 'none';
-  }
 });
 
-function saveSpot() {
+// ============================================================
+// SALVA POSTO SU FIREBASE
+// Quando clicchi "Salva posto", il posto viene scritto nel
+// database di Firebase — da quel momento esiste per sempre
+// e appare su tutti i dispositivi che aprono il sito
+// ============================================================
+async function saveSpot() {
   const name = document.getElementById('fName').value.trim();
   const addr = document.getElementById('fAddr').value.trim();
   const lat  = parseFloat(document.getElementById('fLat').value);
   const lng  = parseFloat(document.getElementById('fLng').value);
 
-  if (!name) return alert('Cerca e seleziona un posto dalla lista, poi puoi modificare il nome.');
-  if (!addr || isNaN(lat) || isNaN(lng)) return alert('Seleziona un posto dalla lista di suggerimenti per ottenere le coordinate.');
+  if (!name) return alert('Cerca e seleziona un posto dalla lista.');
+  if (!addr || isNaN(lat) || isNaN(lng)) return alert('Seleziona un posto dalla lista di suggerimenti.');
 
-  const newSpot = {
-    id: Date.now(),
-    name,
-    addr,
-    cat: document.getElementById('fCat').value,
-    price: document.getElementById('fPrice').value,
-    stars: currentRating || 3,
-    review: document.getElementById('fReview').value.trim() || 'Nessuna recensione ancora.',
-    lat,
-    lng
-  };
+  const saveBtn = document.querySelector('.modal-footer .btn-primary');
+  saveBtn.textContent = 'Salvataggio…';
+  saveBtn.disabled = true;
 
-  spots.push(newSpot);
-  closeModal();
-  renderAll();
-  selectSpot(newSpot.id);
+  try {
+    await spotsCollection.add({
+      name,
+      addr,
+      cat:    document.getElementById('fCat').value,
+      price:  document.getElementById('fPrice').value,
+      stars:  currentRating || 3,
+      review: document.getElementById('fReview').value.trim() || 'Nessuna recensione ancora.',
+      lat,
+      lng,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeModal();
+    showToast('✅ Posto salvato!');
+  } catch(err) {
+    console.error(err);
+    alert('Errore nel salvataggio. Controlla la connessione.');
+  } finally {
+    saveBtn.textContent = 'Salva posto';
+    saveBtn.disabled = false;
+  }
 }
 
-// Chiudi modal cliccando fuori
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOverlay')) closeModal();
 });
@@ -958,16 +566,16 @@ document.getElementById('modalOverlay').addEventListener('click', e => {
 // ============================================================
 function copyLink() {
   navigator.clipboard.writeText(window.location.href).then(() => {
-    alert('Link copiato! 🎉\nCondividilo con i tuoi amici.');
+    showToast('🔗 Link copiato! Mandalo ai tuoi amici.');
   }).catch(() => {
     prompt('Copia questo link:', window.location.href);
   });
 }
 
 // ============================================================
-// AVVIO
+// AVVIO — carica i posti da Firebase
 // ============================================================
-renderAll();
+loadSpots();
 </script>
 </body>
 </html>
