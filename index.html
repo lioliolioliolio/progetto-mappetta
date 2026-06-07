@@ -12,45 +12,36 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root {
-    --bg: #F5F0E8;
-    --bg2: #EDE8DE;
-    --card: #FDFAF5;
-    --text: #1A1814;
-    --text2: #6B6559;
-    --accent: #C4472A;
-    --accent2: #E8A020;
-    --border: #D8D0C0;
+    --bg: #F5F0E8; --bg2: #EDE8DE; --card: #FDFAF5;
+    --text: #1A1814; --text2: #6B6559;
+    --accent: #C4472A; --accent2: #E8A020; --border: #D8D0C0;
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: var(--font-body); background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  /* LOADING */
   .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; gap: 14px; transition: opacity 0.4s; }
   .loading-overlay.hidden { opacity: 0; pointer-events: none; }
   .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 14px; color: var(--text2); font-family: var(--font-body); }
+  .loading-text { font-size: 14px; color: var(--text2); }
 
-  /* TOAST */
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 99px; font-size: 13px; font-family: var(--font-body); z-index: 9000; transition: transform 0.3s; white-space: nowrap; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 99px; font-size: 13px; z-index: 9000; transition: transform 0.3s; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  /* HEADER */
   header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 100; }
-  .header-left h1 { font-family: var(--font-display); font-size: 22px; color: var(--text); letter-spacing: -0.3px; }
+  .header-left h1 { font-family: var(--font-display); font-size: 22px; letter-spacing: -0.3px; }
   .header-left p { font-size: 12px; color: var(--text2); margin-top: 1px; }
   .header-right { display: flex; gap: 10px; align-items: center; }
   .btn { font-family: var(--font-body); font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; transition: all 0.15s; }
   .btn:hover { background: var(--bg2); }
   .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
-  .btn-primary:hover { background: #a83820; border-color: #a83820; }
+  .btn-primary:hover { background: #a83820; }
+  .btn-danger { background: #fff0ee; color: var(--accent); border-color: #f5c4bb; }
+  .btn-danger:hover { background: #fce0da; }
 
-  /* LAYOUT */
   .layout { display: flex; flex: 1; overflow: hidden; }
-
-  /* SIDEBAR */
   .sidebar { width: 320px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-top { padding: 16px; border-bottom: 1px solid var(--border); }
   .search-wrap { position: relative; }
@@ -58,43 +49,52 @@
   .search-input { width: 100%; font-family: var(--font-body); font-size: 13px; padding: 8px 10px 8px 34px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; }
   .search-input:focus { border-color: var(--accent); }
   .filters { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-  .chip { font-family: var(--font-body); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; letter-spacing: 0.2px; }
+  .chip { font-family: var(--font-body); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
   .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
   .spots-count { font-size: 11px; color: var(--text2); padding: 8px 16px 4px; }
   .spots-list { flex: 1; overflow-y: auto; }
+  .spots-list::-webkit-scrollbar { width: 4px; }
+  .spots-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
   .spot-card { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
   .spot-card:hover { background: var(--bg); }
   .spot-card.active { background: #FEF5F2; border-left: 3px solid var(--accent); }
   .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-  .spot-name { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .spot-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
   .spot-price { font-size: 12px; color: var(--accent2); font-weight: 500; flex-shrink: 0; margin-left: 8px; }
   .spot-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .spot-cat { font-size: 11px; color: var(--text2); background: var(--bg2); padding: 2px 7px; border-radius: 4px; }
-  .stars { font-size: 12px; letter-spacing: 1px; }
+  .stars { font-size: 12px; }
   .spot-review { font-size: 12px; color: var(--text2); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .card-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .card-action-btn { font-family: var(--font-body); font-size: 11px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); background: transparent; cursor: pointer; transition: all 0.12s; color: var(--text2); }
+  .card-action-btn:hover { background: var(--bg2); }
+  .card-action-btn.delete { color: var(--accent); border-color: #f5c4bb; }
+  .card-action-btn.delete:hover { background: #fff0ee; }
 
-  /* MAP */
   #map { flex: 1; z-index: 1; }
 
-  /* POPUP */
   .leaflet-popup-content-wrapper { background: var(--card); border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.12); padding: 0; overflow: hidden; }
-  .leaflet-popup-content { margin: 0; width: 240px !important; }
+  .leaflet-popup-content { margin: 0; width: 260px !important; }
   .leaflet-popup-tip { background: var(--card); }
   .popup-inner { padding: 14px; }
-  .popup-name { font-family: var(--font-display); font-size: 16px; color: var(--text); margin-bottom: 4px; }
-  .popup-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .popup-name { font-family: var(--font-display); font-size: 16px; margin-bottom: 4px; }
+  .popup-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   .popup-cat { font-size: 11px; color: var(--text2); background: var(--bg2); padding: 2px 7px; border-radius: 4px; }
   .popup-price { font-size: 12px; color: var(--accent2); font-weight: 500; }
-  .popup-stars { font-size: 13px; }
   .popup-addr { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
-  .popup-review { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .popup-review { font-size: 12px; line-height: 1.5; }
+  .popup-actions { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .popup-btn { font-family: var(--font-body); font-size: 11px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: transparent; cursor: pointer; color: var(--text2); transition: all 0.12s; }
+  .popup-btn:hover { background: var(--bg2); }
+  .popup-btn.delete { color: var(--accent); border-color: #f5c4bb; }
+  .popup-btn.delete:hover { background: #fff0ee; }
 
-  /* MODAL */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; width: 400px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
-  .modal h2 { font-family: var(--font-display); font-size: 20px; margin-bottom: 20px; color: var(--text); }
+  .modal h2 { font-family: var(--font-display); font-size: 20px; margin-bottom: 20px; }
   .form-row { margin-bottom: 14px; }
   .form-row label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
   .form-row input, .form-row textarea, .form-row select { width: 100%; font-family: var(--font-body); font-size: 13px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s; }
@@ -105,46 +105,41 @@
   .star-btn:hover { transform: scale(1.2); }
   .star-btn.on { color: var(--accent2); }
   .form-row-half { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .modal-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .modal-footer-right { display: flex; gap: 8px; }
+  .edit-badge { display: inline-block; font-size: 10px; background: var(--accent2); color: white; padding: 2px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
 
-  /* EMPTY STATE */
+  .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+  .confirm-overlay.open { display: flex; }
+  .confirm-box { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 24px; width: 320px; box-shadow: 0 8px 40px rgba(0,0,0,0.2); }
+  .confirm-box h3 { font-family: var(--font-display); font-size: 18px; margin-bottom: 8px; }
+  .confirm-box p { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 20px; }
+  .confirm-footer { display: flex; justify-content: flex-end; gap: 8px; }
+
   .empty-state { padding: 40px 20px; text-align: center; color: var(--text2); }
   .empty-state p { font-size: 13px; line-height: 1.6; }
 
-  /* SCROLLBAR */
-  .spots-list::-webkit-scrollbar { width: 4px; }
-  .spots-list::-webkit-scrollbar-track { background: transparent; }
-  .spots-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-  /* MARKER */
   .custom-marker { width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
   .custom-marker span { transform: rotate(45deg); font-size: 14px; line-height: 1; }
-  .cat-ristorante { background: #C4472A; }
-  .cat-pizzeria   { background: #5A8A2A; }
-  .cat-bar        { background: #2A6AB4; }
-  .cat-caffe      { background: #9B6020; }
-  .cat-aperitivo  { background: #7A3AA0; }
-  .cat-gelato     { background: #C4769A; }
+  .cat-ristorante { background: #C4472A; } .cat-pizzeria { background: #5A8A2A; }
+  .cat-bar { background: #2A6AB4; } .cat-caffe { background: #9B6020; }
+  .cat-aperitivo { background: #7A3AA0; } .cat-gelato { background: #C4769A; }
 
-  /* AUTOCOMPLETE */
   .suggestions-box { position: absolute; top: 100%; left: 0; right: 0; background: var(--card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); z-index: 200; max-height: 220px; overflow-y: auto; }
   .suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s; }
   .suggestion-item:last-child { border-bottom: none; }
   .suggestion-item:hover { background: var(--bg2); }
-  .suggestion-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .suggestion-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
   .suggestion-addr { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .suggestion-loading, .suggestion-empty { padding: 12px; font-size: 12px; color: var(--text2); text-align: center; }
 </style>
 </head>
 <body>
 
-<!-- LOADING SCREEN -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">Caricamento posti…</div>
 </div>
-
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <header>
@@ -181,42 +176,36 @@
   <div id="map"></div>
 </div>
 
-<!-- MODAL AGGIUNGI POSTO -->
+<!-- MODAL AGGIUNGI / MODIFICA -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
-    <h2>Aggiungi un posto</h2>
-
-    <div class="form-row" style="position:relative">
-      <label>Cerca il posto 🔍</label>
-      <input id="fSearch" placeholder="es. Pizzeria Spontini Milano" autocomplete="off" oninput="onSearchInput()" onfocus="showSuggestions()">
-      <div id="suggestions" class="suggestions-box" style="display:none"></div>
+    <h2 id="modalTitle">Aggiungi un posto</h2>
+    <div id="searchSection">
+      <div class="form-row" style="position:relative">
+        <label>Cerca il posto 🔍</label>
+        <input id="fSearch" placeholder="es. Pizzeria Spontini Milano" autocomplete="off" oninput="onSearchInput()" onfocus="showSuggestions()">
+        <div id="suggestions" class="suggestions-box" style="display:none"></div>
+      </div>
+      <div id="selectedPlace" style="display:none; margin-bottom:14px; padding:10px 12px; background:var(--bg2); border-radius:6px; border:1px solid var(--border)">
+        <div style="font-size:12px; color:var(--text2); margin-bottom:2px">Posto selezionato</div>
+        <div id="selectedPlaceName" style="font-size:13px; font-weight:500"></div>
+        <div id="selectedPlaceAddr" style="font-size:12px; color:var(--text2); margin-top:2px"></div>
+      </div>
     </div>
-
-    <div id="selectedPlace" style="display:none; margin-bottom:14px; padding:10px 12px; background:var(--bg2); border-radius:6px; border:1px solid var(--border)">
-      <div style="font-size:12px; color:var(--text2); margin-bottom:2px">Posto selezionato</div>
-      <div id="selectedPlaceName" style="font-size:13px; font-weight:500; color:var(--text)"></div>
-      <div id="selectedPlaceAddr" style="font-size:12px; color:var(--text2); margin-top:2px"></div>
-    </div>
-
     <div class="form-row">
       <label>Nome da mostrare sul sito *</label>
       <input id="fName" placeholder="es. Trattoria da Mario">
     </div>
-
     <input type="hidden" id="fAddr">
     <input type="hidden" id="fLat">
     <input type="hidden" id="fLng">
-
     <div class="form-row-half">
       <div class="form-row" style="margin-bottom:0">
         <label>Categoria</label>
         <select id="fCat">
-          <option>Ristorante</option>
-          <option>Pizzeria</option>
-          <option>Bar</option>
-          <option>Caffè</option>
-          <option>Aperitivo</option>
-          <option>Gelato</option>
+          <option>Ristorante</option><option>Pizzeria</option>
+          <option>Bar</option><option>Caffè</option>
+          <option>Aperitivo</option><option>Gelato</option>
         </select>
       </div>
       <div class="form-row" style="margin-bottom:0">
@@ -228,7 +217,6 @@
         </select>
       </div>
     </div>
-
     <div class="form-row" style="margin-top:14px">
       <label>Voto</label>
       <div class="star-row" id="starRow">
@@ -239,23 +227,35 @@
         <button class="star-btn" data-v="5">★</button>
       </div>
     </div>
-
     <div class="form-row">
       <label>La tua recensione</label>
       <textarea id="fReview" placeholder="Cosa hai mangiato? Cosa consigli? Atmosfera?"></textarea>
     </div>
-
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal()">Annulla</button>
-      <button class="btn btn-primary" onclick="saveSpot()">Salva posto</button>
+      <div>
+        <button class="btn btn-danger" id="deleteFromModal" style="display:none" onclick="deleteFromModalFn()">🗑 Elimina posto</button>
+      </div>
+      <div class="modal-footer-right">
+        <button class="btn" onclick="closeModal()">Annulla</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveSpot()">Salva posto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIALOG CONFERMA ELIMINAZIONE -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>Eliminare questo posto?</h3>
+    <p id="confirmText">Questa azione non può essere annullata.</p>
+    <div class="confirm-footer">
+      <button class="btn" onclick="closeConfirm()">Annulla</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">Sì, elimina</button>
     </div>
   </div>
 </div>
 
 <script>
-// ============================================================
-// FIREBASE — il "quaderno su cloud" dove salviamo i posti
-// ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAM4e_WeacF_3YeiUytaQd4rl0sMu0EwSI",
   authDomain: "mappetta-9d25c.firebaseapp.com",
@@ -267,314 +267,233 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const spotsCollection = db.collection('spots');
-
 let spots = [];
 
-// ============================================================
-// MAPPA
-// ============================================================
-const map = L.map('map', { zoomControl: true }).setView([45.4654, 9.1859], 13);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap © CartoDB',
-  subdomains: 'abcd', maxZoom: 19
+const map = L.map('map',{zoomControl:true}).setView([45.4654,9.1859],13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CartoDB',subdomains:'abcd',maxZoom:19
 }).addTo(map);
 
-const catEmoji = { "Ristorante":"🍽","Pizzeria":"🍕","Bar":"🍹","Caffè":"☕","Aperitivo":"🥂","Gelato":"🍦" };
-const catClass = { "Ristorante":"cat-ristorante","Pizzeria":"cat-pizzeria","Bar":"cat-bar","Caffè":"cat-caffe","Aperitivo":"cat-aperitivo","Gelato":"cat-gelato" };
+const catEmoji={"Ristorante":"🍽","Pizzeria":"🍕","Bar":"🍹","Caffè":"☕","Aperitivo":"🥂","Gelato":"🍦"};
+const catClass={"Ristorante":"cat-ristorante","Pizzeria":"cat-pizzeria","Bar":"cat-bar","Caffè":"cat-caffe","Aperitivo":"cat-aperitivo","Gelato":"cat-gelato"};
+let markers={}, currentFilter="all", selectedId=null;
 
-let markers = {};
-let currentFilter = "all";
-let selectedId = null;
+function starsHTML(n,size=13){return Array.from({length:5},(_,i)=>`<span style="color:${i<n?'#E8A020':'#D8D0C0'};font-size:${size}px">★</span>`).join('');}
 
-function starsHTML(n, size = 13) {
-  return Array.from({length:5}, (_,i) =>
-    `<span style="color:${i<n?'#E8A020':'#D8D0C0'};font-size:${size}px">★</span>`
-  ).join('');
+function makeMarker(spot){
+  const cls=catClass[spot.cat]||'cat-ristorante', emoji=catEmoji[spot.cat]||'📍';
+  const icon=L.divIcon({className:'',html:`<div class="custom-marker ${cls}"><span>${emoji}</span></div>`,iconSize:[32,32],iconAnchor:[16,32],popupAnchor:[0,-34]});
+  const safeN=spot.name.replace(/'/g,"\\'");
+  const m=L.marker([spot.lat,spot.lng],{icon})
+    .bindPopup(`<div class="popup-inner">
+      <div class="popup-name">${spot.name}</div>
+      <div class="popup-meta"><span class="popup-cat">${spot.cat}</span><span class="popup-price">${spot.price}</span><span>${starsHTML(spot.stars,12)}</span></div>
+      <div class="popup-addr">📍 ${spot.addr}</div>
+      <div class="popup-review">${spot.review}</div>
+      <div class="popup-actions">
+        <button class="popup-btn" onclick="openEditModal('${spot.id}')">✏️ Modifica</button>
+        <button class="popup-btn delete" onclick="askDelete('${spot.id}','${safeN}')">🗑 Elimina</button>
+      </div></div>`,{maxWidth:280}).addTo(map);
+  m.on('click',()=>{selectedId=spot.id;renderList();scrollToCard(spot.id);});
+  return m;
 }
 
-function makeMarker(spot) {
-  const cls = catClass[spot.cat] || 'cat-ristorante';
-  const emoji = catEmoji[spot.cat] || '📍';
-  const icon = L.divIcon({
-    className: '',
-    html: `<div class="custom-marker ${cls}"><span>${emoji}</span></div>`,
-    iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-34]
-  });
-  const marker = L.marker([spot.lat, spot.lng], {icon})
-    .bindPopup(`
-      <div class="popup-inner">
-        <div class="popup-name">${spot.name}</div>
-        <div class="popup-meta">
-          <span class="popup-cat">${spot.cat}</span>
-          <span class="popup-price">${spot.price}</span>
-          <span class="popup-stars">${starsHTML(spot.stars, 12)}</span>
-        </div>
-        <div class="popup-addr">📍 ${spot.addr}</div>
-        <div class="popup-review">${spot.review}</div>
-      </div>`, {maxWidth:260})
-    .addTo(map);
-  marker.on('click', () => { selectedId = spot.id; renderList(); scrollToCard(spot.id); });
-  return marker;
-}
+function refreshMarkers(){Object.values(markers).forEach(m=>map.removeLayer(m));markers={};getFiltered().forEach(s=>{markers[s.id]=makeMarker(s);});}
 
-function refreshMarkers() {
-  Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
-  getFiltered().forEach(spot => { markers[spot.id] = makeMarker(spot); });
-}
-
-// ============================================================
-// LISTA
-// ============================================================
-function getFiltered() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  return spots.filter(s => {
-    const matchCat = currentFilter === 'all' || s.cat === currentFilter;
-    const matchQ = !q || s.name.toLowerCase().includes(q) || s.addr.toLowerCase().includes(q) || s.review.toLowerCase().includes(q);
-    return matchCat && matchQ;
+function getFiltered(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  return spots.filter(s=>{
+    const mc=currentFilter==='all'||s.cat===currentFilter;
+    const mq=!q||s.name.toLowerCase().includes(q)||s.addr.toLowerCase().includes(q)||s.review.toLowerCase().includes(q);
+    return mc&&mq;
   });
 }
 
-function renderList() {
-  const filtered = getFiltered();
-  document.getElementById('spotsCount').textContent = `${filtered.length} posto${filtered.length !== 1 ? 'i' : ''}`;
-  document.getElementById('subtitleCount').textContent = `${spots.length} posti salvati`;
-
-  const list = document.getElementById('spotsList');
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state"><p>Nessun posto trovato.<br>Prova a cambiare filtro o ricerca.</p></div>`;
-    return;
-  }
-  list.innerHTML = filtered.map(s => `
-    <div class="spot-card${selectedId===s.id?' active':''}" id="card-${s.id}" onclick="selectSpot('${s.id}')">
+function renderList(){
+  const filtered=getFiltered();
+  document.getElementById('spotsCount').textContent=`${filtered.length} posto${filtered.length!==1?'i':''}`;
+  document.getElementById('subtitleCount').textContent=`${spots.length} posti salvati`;
+  const list=document.getElementById('spotsList');
+  if(!filtered.length){list.innerHTML='<div class="empty-state"><p>Nessun posto trovato.<br>Prova a cambiare filtro.</p></div>';return;}
+  list.innerHTML=filtered.map(s=>{
+    const safeN=s.name.replace(/'/g,"\\'");
+    return`<div class="spot-card${selectedId===s.id?' active':''}" id="card-${s.id}" onclick="selectSpot('${s.id}')">
       <div class="card-top"><span class="spot-name">${s.name}</span><span class="spot-price">${s.price}</span></div>
       <div class="spot-meta"><span class="spot-cat">${s.cat}</span><span class="stars">${starsHTML(s.stars)}</span></div>
       <div class="spot-review">${s.review}</div>
-    </div>`).join('');
+      <div class="card-actions">
+        <button class="card-action-btn" onclick="event.stopPropagation();openEditModal('${s.id}')">✏️ Modifica</button>
+        <button class="card-action-btn delete" onclick="event.stopPropagation();askDelete('${s.id}','${safeN}')">🗑 Elimina</button>
+      </div></div>`;}).join('');
 }
 
-function selectSpot(id) {
-  selectedId = id;
-  renderList();
-  const spot = spots.find(s => s.id === id);
-  if (spot && markers[id]) {
-    map.setView([spot.lat, spot.lng], 15, {animate: true});
-    markers[id].openPopup();
-  }
+function selectSpot(id){
+  selectedId=id;renderList();
+  const s=spots.find(x=>x.id===id);
+  if(s&&markers[id]){map.setView([s.lat,s.lng],15,{animate:true});markers[id].openPopup();}
 }
+function scrollToCard(id){setTimeout(()=>{const c=document.getElementById('card-'+id);if(c)c.scrollIntoView({behavior:'smooth',block:'nearest'});},100);}
+function renderAll(){renderList();refreshMarkers();}
 
-function scrollToCard(id) {
-  setTimeout(() => {
-    const card = document.getElementById('card-' + id);
-    if (card) card.scrollIntoView({behavior:'smooth', block:'nearest'});
-  }, 100);
-}
-
-function renderAll() { renderList(); refreshMarkers(); }
-
-// ============================================================
-// FILTRI
-// ============================================================
-document.getElementById('filters').addEventListener('click', e => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  currentFilter = chip.dataset.cat;
-  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.cat === currentFilter));
+document.getElementById('filters').addEventListener('click',e=>{
+  const chip=e.target.closest('.chip');if(!chip)return;
+  currentFilter=chip.dataset.cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.dataset.cat===currentFilter));
   renderAll();
 });
 
-// ============================================================
-// TOAST
-// ============================================================
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
-// ============================================================
-// CARICA POSTI DA FIREBASE
-// Ogni volta che il sito si apre, legge tutti i posti dal database
-// e li mette sulla mappa — in tempo reale, da qualsiasi dispositivo
-// ============================================================
-function loadSpots() {
-  spotsCollection.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-    spots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+function loadSpots(){
+  spotsCollection.orderBy('createdAt','desc').onSnapshot(snap=>{
+    spots=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderAll();
     document.getElementById('loadingOverlay').classList.add('hidden');
-  }, err => {
-    console.error(err);
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    showToast('Errore di connessione al database');
-  });
+  },err=>{console.error(err);document.getElementById('loadingOverlay').classList.add('hidden');showToast('Errore connessione');});
 }
 
-// ============================================================
-// MODAL ADMIN
-// ============================================================
-let currentRating = 0;
+let currentRating=0, editingId=null;
 
-function openModal() {
-  currentRating = 0;
-  document.getElementById('fSearch').value = '';
-  document.getElementById('fName').value = '';
-  document.getElementById('fAddr').value = '';
-  document.getElementById('fLat').value = '';
-  document.getElementById('fLng').value = '';
-  document.getElementById('fReview').value = '';
-  document.getElementById('fCat').value = 'Ristorante';
-  document.getElementById('fPrice').value = '€€';
-  document.getElementById('selectedPlace').style.display = 'none';
-  document.getElementById('suggestions').style.display = 'none';
+function openModal(){
+  editingId=null;currentRating=0;
+  document.getElementById('modalTitle').textContent='Aggiungi un posto';
+  document.getElementById('saveBtn').textContent='Salva posto';
+  document.getElementById('searchSection').style.display='block';
+  document.getElementById('deleteFromModal').style.display='none';
+  ['fSearch','fName','fReview'].forEach(id=>document.getElementById(id).value='');
+  ['fAddr','fLat','fLng'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fCat').value='Ristorante';
+  document.getElementById('fPrice').value='€€';
+  document.getElementById('selectedPlace').style.display='none';
+  document.getElementById('suggestions').style.display='none';
   updateStars();
   document.getElementById('modalOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('fSearch').focus(), 100);
+  setTimeout(()=>document.getElementById('fSearch').focus(),100);
 }
 
-function closeModal() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.getElementById('suggestions').style.display = 'none';
-}
-
-document.getElementById('starRow').addEventListener('click', e => {
-  const btn = e.target.closest('.star-btn');
-  if (!btn) return;
-  currentRating = parseInt(btn.dataset.v);
+function openEditModal(id){
+  const s=spots.find(x=>x.id===id);if(!s)return;
+  editingId=id;currentRating=s.stars;
+  document.getElementById('modalTitle').innerHTML='Modifica posto <span class="edit-badge">modifica</span>';
+  document.getElementById('saveBtn').textContent='Aggiorna posto';
+  document.getElementById('searchSection').style.display='none';
+  document.getElementById('deleteFromModal').style.display='inline-flex';
+  document.getElementById('fName').value=s.name;
+  document.getElementById('fAddr').value=s.addr;
+  document.getElementById('fLat').value=s.lat;
+  document.getElementById('fLng').value=s.lng;
+  document.getElementById('fReview').value=s.review;
+  document.getElementById('fCat').value=s.cat;
+  document.getElementById('fPrice').value=s.price;
   updateStars();
-});
-
-function updateStars() {
-  document.querySelectorAll('.star-btn').forEach(b => {
-    b.classList.toggle('on', parseInt(b.dataset.v) <= currentRating);
-  });
+  map.closePopup();
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('fName').focus(),100);
 }
 
-// ============================================================
-// GEOCODING — cerca il posto su OpenStreetMap
-// ============================================================
-let searchTimer = null;
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.getElementById('suggestions').style.display='none';editingId=null;}
 
-function onSearchInput() {
-  const q = document.getElementById('fSearch').value.trim();
+document.getElementById('starRow').addEventListener('click',e=>{
+  const b=e.target.closest('.star-btn');if(!b)return;
+  currentRating=parseInt(b.dataset.v);updateStars();
+});
+function updateStars(){document.querySelectorAll('.star-btn').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.v)<=currentRating));}
+
+let searchTimer=null;
+function onSearchInput(){
+  const q=document.getElementById('fSearch').value.trim();
   clearTimeout(searchTimer);
-  if (q.length < 3) { document.getElementById('suggestions').style.display = 'none'; return; }
-  const box = document.getElementById('suggestions');
-  box.innerHTML = '<div class="suggestion-loading">Sto cercando…</div>';
-  box.style.display = 'block';
-  searchTimer = setTimeout(() => searchPlaces(q), 400);
+  if(q.length<3){document.getElementById('suggestions').style.display='none';return;}
+  const box=document.getElementById('suggestions');
+  box.innerHTML='<div class="suggestion-loading">Sto cercando…</div>';
+  box.style.display='block';
+  searchTimer=setTimeout(()=>searchPlaces(q),400);
 }
-
-function showSuggestions() {
-  const box = document.getElementById('suggestions');
-  if (box.innerHTML.trim() && document.getElementById('fSearch').value.length >= 3) box.style.display = 'block';
+function showSuggestions(){
+  const box=document.getElementById('suggestions');
+  if(box.innerHTML.trim()&&document.getElementById('fSearch').value.length>=3)box.style.display='block';
 }
-
-async function searchPlaces(query) {
-  try {
-    const q = query.toLowerCase().includes('milan') ? query : query + ' Milano';
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=it`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'it' } });
-    const results = await res.json();
-    const box = document.getElementById('suggestions');
-    if (results.length === 0) { box.innerHTML = '<div class="suggestion-empty">Nessun risultato. Prova con un nome più specifico.</div>'; return; }
-    box.innerHTML = results.map((r, i) => {
-      const name = r.name || r.display_name.split(',')[0];
-      return `<div class="suggestion-item" onclick="selectPlace(${i})">
-        <div class="suggestion-name">${name}</div>
-        <div class="suggestion-addr">${r.display_name}</div>
-      </div>`;
-    }).join('');
-    box._results = results;
-    box.style.display = 'block';
-  } catch(err) {
-    document.getElementById('suggestions').innerHTML = '<div class="suggestion-empty">Errore di rete. Riprova.</div>';
-  }
+async function searchPlaces(query){
+  try{
+    const q=query.toLowerCase().includes('milan')?query:query+' Milano';
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=it`;
+    const res=await fetch(url,{headers:{'Accept-Language':'it'}});
+    const results=await res.json();
+    const box=document.getElementById('suggestions');
+    if(!results.length){box.innerHTML='<div class="suggestion-empty">Nessun risultato.</div>';return;}
+    box.innerHTML=results.map((r,i)=>`<div class="suggestion-item" onclick="selectPlace(${i})">
+      <div class="suggestion-name">${r.name||r.display_name.split(',')[0]}</div>
+      <div class="suggestion-addr">${r.display_name}</div></div>`).join('');
+    box._results=results;box.style.display='block';
+  }catch(e){document.getElementById('suggestions').innerHTML='<div class="suggestion-empty">Errore di rete.</div>';}
 }
-
-function selectPlace(idx) {
-  const box = document.getElementById('suggestions');
-  const r = box._results[idx];
-  if (!r) return;
-  const name = r.name || r.display_name.split(',')[0];
-  const shortAddr = r.display_name.split(', ').slice(0, 3).join(', ');
-  document.getElementById('fName').value = name;
-  document.getElementById('fAddr').value = shortAddr;
-  document.getElementById('fLat').value = r.lat;
-  document.getElementById('fLng').value = r.lon;
-  document.getElementById('selectedPlaceName').textContent = name;
-  document.getElementById('selectedPlaceAddr').textContent = shortAddr;
-  document.getElementById('selectedPlace').style.display = 'block';
-  box.style.display = 'none';
-  document.getElementById('fSearch').value = name;
-  setTimeout(() => document.getElementById('fReview').focus(), 100);
+function selectPlace(idx){
+  const box=document.getElementById('suggestions'),r=box._results[idx];if(!r)return;
+  const name=r.name||r.display_name.split(',')[0];
+  const addr=r.display_name.split(', ').slice(0,3).join(', ');
+  document.getElementById('fName').value=name;
+  document.getElementById('fAddr').value=addr;
+  document.getElementById('fLat').value=r.lat;
+  document.getElementById('fLng').value=r.lon;
+  document.getElementById('selectedPlaceName').textContent=name;
+  document.getElementById('selectedPlaceAddr').textContent=addr;
+  document.getElementById('selectedPlace').style.display='block';
+  box.style.display='none';
+  document.getElementById('fSearch').value=name;
+  setTimeout(()=>document.getElementById('fReview').focus(),100);
 }
+document.addEventListener('click',e=>{if(!e.target.closest('#fSearch')&&!e.target.closest('#suggestions'))document.getElementById('suggestions').style.display='none';});
 
-document.addEventListener('click', e => {
-  if (!e.target.closest('#fSearch') && !e.target.closest('#suggestions'))
-    document.getElementById('suggestions').style.display = 'none';
-});
-
-// ============================================================
-// SALVA POSTO SU FIREBASE
-// Quando clicchi "Salva posto", il posto viene scritto nel
-// database di Firebase — da quel momento esiste per sempre
-// e appare su tutti i dispositivi che aprono il sito
-// ============================================================
-async function saveSpot() {
-  const name = document.getElementById('fName').value.trim();
-  const addr = document.getElementById('fAddr').value.trim();
-  const lat  = parseFloat(document.getElementById('fLat').value);
-  const lng  = parseFloat(document.getElementById('fLng').value);
-
-  if (!name) return alert('Cerca e seleziona un posto dalla lista.');
-  if (!addr || isNaN(lat) || isNaN(lng)) return alert('Seleziona un posto dalla lista di suggerimenti.');
-
-  const saveBtn = document.querySelector('.modal-footer .btn-primary');
-  saveBtn.textContent = 'Salvataggio…';
-  saveBtn.disabled = true;
-
-  try {
-    await spotsCollection.add({
-      name,
-      addr,
-      cat:    document.getElementById('fCat').value,
-      price:  document.getElementById('fPrice').value,
-      stars:  currentRating || 3,
-      review: document.getElementById('fReview').value.trim() || 'Nessuna recensione ancora.',
-      lat,
-      lng,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+async function saveSpot(){
+  const name=document.getElementById('fName').value.trim();
+  const addr=document.getElementById('fAddr').value.trim();
+  const lat=parseFloat(document.getElementById('fLat').value);
+  const lng=parseFloat(document.getElementById('fLng').value);
+  if(!name)return alert('Inserisci il nome del posto.');
+  if(!addr||isNaN(lat)||isNaN(lng))return alert('Seleziona un posto dalla lista dei suggerimenti.');
+  const btn=document.getElementById('saveBtn');
+  btn.textContent='Salvataggio…';btn.disabled=true;
+  const data={name,addr,cat:document.getElementById('fCat').value,price:document.getElementById('fPrice').value,stars:currentRating||3,review:document.getElementById('fReview').value.trim()||'Nessuna recensione.',lat,lng};
+  try{
+    if(editingId){
+      await spotsCollection.doc(editingId).update(data);
+      showToast('✅ Posto aggiornato!');
+    }else{
+      data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      await spotsCollection.add(data);
+      showToast('✅ Posto salvato!');
+    }
     closeModal();
-    showToast('✅ Posto salvato!');
-  } catch(err) {
-    console.error(err);
-    alert('Errore nel salvataggio. Controlla la connessione.');
-  } finally {
-    saveBtn.textContent = 'Salva posto';
-    saveBtn.disabled = false;
-  }
+  }catch(e){console.error(e);alert('Errore nel salvataggio.');}
+  finally{btn.textContent=editingId?'Aggiorna posto':'Salva posto';btn.disabled=false;}
 }
 
-document.getElementById('modalOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalOverlay')) closeModal();
+let pendingDeleteId=null;
+function askDelete(id,name){
+  pendingDeleteId=id;
+  document.getElementById('confirmText').textContent=`Vuoi eliminare "${name}"? Questa azione non può essere annullata.`;
+  document.getElementById('confirmOverlay').classList.add('open');
+  map.closePopup();
+}
+function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('open');pendingDeleteId=null;}
+document.getElementById('confirmDeleteBtn').addEventListener('click',async()=>{
+  if(!pendingDeleteId)return;
+  try{await spotsCollection.doc(pendingDeleteId).delete();closeConfirm();closeModal();showToast('🗑 Posto eliminato');}
+  catch(e){console.error(e);alert('Errore durante l\'eliminazione.');}
 });
-
-// ============================================================
-// CONDIVIDI
-// ============================================================
-function copyLink() {
-  navigator.clipboard.writeText(window.location.href).then(() => {
-    showToast('🔗 Link copiato! Mandalo ai tuoi amici.');
-  }).catch(() => {
-    prompt('Copia questo link:', window.location.href);
-  });
+function deleteFromModalFn(){
+  if(!editingId)return;
+  const s=spots.find(x=>x.id===editingId);
+  closeModal();askDelete(editingId,s?s.name:'questo posto');
 }
 
-// ============================================================
-// AVVIO — carica i posti da Firebase
-// ============================================================
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('modalOverlay'))closeModal();});
+document.getElementById('confirmOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('confirmOverlay'))closeConfirm();});
+
+function copyLink(){
+  navigator.clipboard.writeText(window.location.href).then(()=>showToast('🔗 Link copiato!')).catch(()=>prompt('Copia questo link:',window.location.href));
+}
+
 loadSpots();
 </script>
 </body>
