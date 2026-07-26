@@ -250,6 +250,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
         <div id="selectedPlaceName" style="font-size:13px;font-weight:500"></div>
         <div id="selectedPlaceAddr" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
       </div>
+      <div style="margin:-6px 0 13px">
+        <a href="#" onclick="event.preventDefault();toggleManualAddress()" style="font-size:12px;color:var(--text2);text-decoration:underline">Non lo trovi? Inserisci l'indirizzo a mano</a>
+      </div>
+      <div id="manualAddressBox" style="display:none;margin-bottom:13px">
+        <input id="fManualAddr" placeholder="es. Via Porro Lambertenghi 24, Milano">
+        <button type="button" class="btn-sm" style="margin-top:6px" onclick="searchManualAddress()">Cerca indirizzo</button>
+      </div>
     </div>
     <div class="form-row">
       <label>Nome *</label>
@@ -550,6 +557,8 @@ function openModal() {
   document.getElementById('fRating').value='8';
   document.getElementById('selectedPlace').style.display='none';
   document.getElementById('suggestions').style.display='none';
+  document.getElementById('manualAddressBox').style.display='none';
+  document.getElementById('fManualAddr').value='';
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('fSearch').focus(),100);
 }
@@ -623,6 +632,31 @@ function selectPlace(idx){
   box.style.display='none';
   document.getElementById('fSearch').value=name;
   setTimeout(()=>document.getElementById('fReview').focus(),100);
+}
+
+function toggleManualAddress(){
+  const box=document.getElementById('manualAddressBox');
+  box.style.display = box.style.display==='none' ? 'block' : 'none';
+}
+async function searchManualAddress(){
+  const q=document.getElementById('fManualAddr').value.trim();
+  if(!q) return;
+  const query = q.toLowerCase().includes('milano')?q:q+', Milano';
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?${new URLSearchParams({q:query,format:'json',limit:1,addressdetails:1,'accept-language':'it'})}`;
+    const res=await fetch(url,{headers:{'Accept-Language':'it'}});
+    const results=await res.json();
+    if(!results.length){ showToast('Indirizzo non trovato, riprova con altre parole'); return; }
+    const r=results[0];
+    const addr=r.display_name.split(', ').slice(0,3).join(', ');
+    document.getElementById('fAddr').value=addr;
+    document.getElementById('fLat').value=r.lat;
+    document.getElementById('fLng').value=r.lon;
+    document.getElementById('selectedPlaceName').textContent=document.getElementById('fName').value||addr;
+    document.getElementById('selectedPlaceAddr').textContent=addr;
+    document.getElementById('selectedPlace').style.display='block';
+    showToast('📍 Indirizzo trovato');
+  }catch(e){ showToast('Errore nella ricerca indirizzo'); }
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('#fSearch')&&!e.target.closest('#suggestions'))
