@@ -231,8 +231,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
       <input type="password" id="authPassword" placeholder="••••••••">
     </div>
     <button class="btn btn-primary" onclick="submitAuth()">Accedi</button>
-    <!-- TEMPORANEO: rimuovere questo pulsante e registerAccount() dopo aver creato il tuo account -->
-    <button class="btn" style="margin-top:8px" onclick="registerAccount()">Crea account (solo la prima volta)</button>
     <button class="btn" style="margin-top:8px" onclick="closeLoginModal()">Annulla</button>
   </div>
 </div>
@@ -352,25 +350,6 @@ function openLoginModal() {
 }
 function closeLoginModal() {
   document.getElementById('loginOverlay').classList.remove('open');
-}
-
-// TEMPORANEO: crea il tuo account personale (email+password, indipendente da Google). Rimuovere dopo l'uso.
-async function registerAccount() {
-  const email = document.getElementById('authEmail').value.trim();
-  const pass = document.getElementById('authPassword').value;
-  if (!email || !pass) return showAuthError('Inserisci email e password.');
-  try {
-    await auth.createUserWithEmailAndPassword(email, pass);
-    showToast('✅ Account creato! Ora sei loggato.');
-    closeLoginModal();
-  } catch(e) {
-    const msgs = {
-      'auth/email-already-in-use': 'Email già registrata — prova invece ad Accedere.',
-      'auth/weak-password': 'Password troppo corta (minimo 6 caratteri).',
-      'auth/invalid-email': 'Email non valida.'
-    };
-    showAuthError(msgs[e.code] || e.message);
-  }
 }
 
 async function submitAuth() {
