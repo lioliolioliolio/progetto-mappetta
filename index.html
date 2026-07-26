@@ -256,6 +256,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
         <input id="fManualAddr" placeholder="es. Via Porro Lambertenghi 24, Milano">
         <button type="button" class="btn-sm" style="margin-top:6px" onclick="searchManualAddress()">Cerca indirizzo</button>
       </div>
+      <div style="margin:-6px 0 13px">
+        <a href="#" onclick="event.preventDefault();toggleManualCoords()" style="font-size:12px;color:var(--text2);text-decoration:underline">Hai le coordinate esatte? Inseriscile qui</a>
+      </div>
+      <div id="manualCoordsBox" style="display:none;margin-bottom:13px">
+        <div class="form-row-half" style="margin-bottom:8px">
+          <input id="fManualLat" placeholder="Latitudine, es. 45.4642" type="number" step="any">
+          <input id="fManualLng" placeholder="Longitudine, es. 9.1900" type="number" step="any">
+        </div>
+        <button type="button" class="btn-sm" onclick="useManualCoords()">Usa queste coordinate</button>
+      </div>
     </div>
     <div class="form-row">
       <label>Nome *</label>
@@ -528,6 +538,9 @@ function openModal() {
   document.getElementById('suggestions').style.display='none';
   document.getElementById('manualAddressBox').style.display='none';
   document.getElementById('fManualAddr').value='';
+  document.getElementById('manualCoordsBox').style.display='none';
+  document.getElementById('fManualLat').value='';
+  document.getElementById('fManualLng').value='';
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('fSearch').focus(),100);
 }
@@ -626,6 +639,30 @@ async function searchManualAddress(){
     document.getElementById('selectedPlace').style.display='block';
     showToast('📍 Indirizzo trovato');
   }catch(e){ showToast('Errore nella ricerca indirizzo'); }
+}
+
+function toggleManualCoords(){
+  const box=document.getElementById('manualCoordsBox');
+  box.style.display = box.style.display==='none' ? 'block' : 'none';
+}
+async function useManualCoords(){
+  const lat=parseFloat(document.getElementById('fManualLat').value);
+  const lng=parseFloat(document.getElementById('fManualLng').value);
+  if(isNaN(lat)||isNaN(lng)){ showToast('Inserisci latitudine e longitudine valide'); return; }
+  document.getElementById('fLat').value=lat;
+  document.getElementById('fLng').value=lng;
+  let addr=`${lat}, ${lng}`;
+  try{
+    const url=`https://nominatim.openstreetmap.org/reverse?${new URLSearchParams({lat,lon:lng,format:'json','accept-language':'it'})}`;
+    const res=await fetch(url,{headers:{'Accept-Language':'it'}});
+    const r=await res.json();
+    if(r && r.display_name) addr=r.display_name.split(', ').slice(0,3).join(', ');
+  }catch(e){}
+  document.getElementById('fAddr').value=addr;
+  document.getElementById('selectedPlaceName').textContent=document.getElementById('fName').value||addr;
+  document.getElementById('selectedPlaceAddr').textContent=addr;
+  document.getElementById('selectedPlace').style.display='block';
+  showToast('📍 Coordinate impostate');
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('#fSearch')&&!e.target.closest('#suggestions'))
