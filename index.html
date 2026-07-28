@@ -206,6 +206,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
           <button class="chip" data-cat="Panifici">Panifici</button>
           <button class="chip" data-cat="Hamburger">Hamburger</button>
           <button class="chip" data-cat="Misto">Misto</button>
+          <button class="chip" data-cat="Orientale">Orientale</button>
+          <button class="chip" data-cat="Street food">Street food</button>
+          <button class="chip" data-cat="Vineria">Vineria</button>
+          <button class="chip" data-cat="Dopo Cena">Dopo Cena</button>
         </div>
       </div>
       <div class="spots-count" id="spotsCount"></div>
@@ -274,17 +278,26 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
     <input type="hidden" id="fAddr">
     <input type="hidden" id="fLat">
     <input type="hidden" id="fLng">
-    <div class="form-row-half">
-      <div class="form-row" style="margin-bottom:0">
-        <label>Categoria</label>
-        <select id="fCat">
-          <option>Ristorante</option><option>Pizzeria</option>
-          <option>Bar</option><option>Caffè</option>
-          <option>Aperitivo</option><option>Gelato</option>
-          <option>Colazione</option><option>Panifici</option>
-          <option>Hamburger</option><option>Misto</option>
-        </select>
+    <div class="form-row">
+      <label>Tag (scegline uno o più)</label>
+      <div class="filters" id="fTags" style="margin-top:6px">
+        <button type="button" class="chip" data-tag="Ristorante">Ristorante</button>
+        <button type="button" class="chip" data-tag="Pizzeria">Pizzeria</button>
+        <button type="button" class="chip" data-tag="Bar">Bar</button>
+        <button type="button" class="chip" data-tag="Caffè">Caffè</button>
+        <button type="button" class="chip" data-tag="Aperitivo">Aperitivo</button>
+        <button type="button" class="chip" data-tag="Gelato">Gelato</button>
+        <button type="button" class="chip" data-tag="Colazione">Colazione</button>
+        <button type="button" class="chip" data-tag="Panifici">Panifici</button>
+        <button type="button" class="chip" data-tag="Hamburger">Hamburger</button>
+        <button type="button" class="chip" data-tag="Misto">Misto</button>
+        <button type="button" class="chip" data-tag="Orientale">Orientale</button>
+        <button type="button" class="chip" data-tag="Street food">Street food</button>
+        <button type="button" class="chip" data-tag="Vineria">Vineria</button>
+        <button type="button" class="chip" data-tag="Dopo Cena">Dopo Cena</button>
       </div>
+    </div>
+    <div class="form-row-half">
       <div class="form-row" style="margin-bottom:0">
         <label>Prezzo</label>
         <select id="fPrice">
@@ -293,12 +306,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:0 2
           <option value="€€€">€€€</option>
         </select>
       </div>
-    </div>
-    <div class="form-row" style="margin-top:13px">
-      <label>Voto</label>
-      <div class="rating-input">
-        <input type="number" id="fRating" min="1" max="10" step="0.25" value="8">
-        <span>/ 10</span>
+      <div class="form-row" style="margin-bottom:0">
+        <label>Voto</label>
+        <div class="rating-input">
+          <input type="number" id="fRating" min="1" max="10" step="0.25" value="8">
+          <span>/ 10</span>
+        </div>
       </div>
     </div>
     <div class="form-row">
@@ -408,10 +421,12 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
   attribution:'© OpenStreetMap © CartoDB',subdomains:'abcd',maxZoom:19
 }).addTo(map);
 
-const catEmoji = {"Ristorante":"🍽","Pizzeria":"🍕","Bar":"🍹","Caffè":"☕","Aperitivo":"🥂","Gelato":"🍦","Colazione":"🥐","Panifici":"🍞","Hamburger":"🍔","Misto":"🛍"};
+const catEmoji = {"Ristorante":"🍽","Pizzeria":"🍕","Bar":"🍹","Caffè":"☕","Aperitivo":"🥂","Gelato":"🍦","Colazione":"🥐","Panifici":"🍞","Hamburger":"🍔","Misto":"🛍","Orientale":"🥢","Street food":"🌭","Vineria":"🍷","Dopo Cena":"🌙"};
+function spotTags(spot){ return spot.tags && spot.tags.length ? spot.tags : (spot.cat ? [spot.cat] : []); }
 
 function makeMarker(spot) {
-  const emoji = catEmoji[spot.cat] || '📍';
+  const tags = spotTags(spot);
+  const emoji = catEmoji[tags[0]] || '📍';
   const icon = L.divIcon({
     className:'',
     html:`<div class="custom-marker"><span>${emoji}</span></div>`,
@@ -427,7 +442,7 @@ function makeMarker(spot) {
     .bindPopup(`<div class="popup-inner">
       <div class="popup-name">${spot.name}</div>
       <div class="popup-meta">
-        <span class="popup-cat">${spot.cat}</span>
+        ${tags.map(t=>`<span class="popup-cat">${t}</span>`).join('')}
         <span class="popup-price">${spot.price}</span>
         <span class="rating-badge">${spot.stars}/10</span>
       </div>
@@ -451,7 +466,7 @@ function refreshMarkers() {
 function getFiltered() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   return spots.filter(s => {
-    const mc = currentFilter==='all' || s.cat===currentFilter;
+    const mc = currentFilter==='all' || spotTags(s).includes(currentFilter);
     const mq = !q || s.name.toLowerCase().includes(q) || s.addr.toLowerCase().includes(q) || s.review.toLowerCase().includes(q);
     return mc && mq;
   });
@@ -474,7 +489,7 @@ function renderList() {
         </div>` : '';
     return `<div class="spot-card${selectedId===s.id?' active':''}" id="card-${s.id}" onclick="selectSpot('${s.id}')">
       <div class="card-top"><span class="spot-name">${s.name}</span><span class="spot-price">${s.price}</span></div>
-      <div class="spot-meta"><span class="spot-cat">${s.cat}</span><span class="rating-badge">${s.stars}/10</span></div>
+      <div class="spot-meta">${spotTags(s).map(t=>`<span class="spot-cat">${t}</span>`).join('')}<span class="rating-badge">${s.stars}/10</span></div>
       <div class="spot-review">${s.review}</div>
       ${actionsHtml}
     </div>`;
@@ -531,7 +546,7 @@ function openModal() {
   document.getElementById('deleteFromModal').style.display = 'none';
   ['fSearch','fName','fReview'].forEach(id=>document.getElementById(id).value='');
   ['fAddr','fLat','fLng'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('fCat').value='Ristorante';
+  setSelectedTags(['Ristorante']);
   document.getElementById('fPrice').value='€€';
   document.getElementById('fRating').value='8';
   document.getElementById('selectedPlace').style.display='none';
@@ -559,7 +574,7 @@ function openEditModal(id) {
   document.getElementById('fLat').value=s.lat;
   document.getElementById('fLng').value=s.lng;
   document.getElementById('fReview').value=s.review;
-  document.getElementById('fCat').value=s.cat;
+  setSelectedTags(spotTags(s));
   document.getElementById('fPrice').value=s.price;
   document.getElementById('fRating').value=s.stars;
   map.closePopup();
@@ -571,6 +586,18 @@ function closeModal() {
   document.getElementById('suggestions').style.display='none';
   editingId=null;
 }
+
+function setSelectedTags(tags){
+  document.querySelectorAll('#fTags .chip').forEach(c=>c.classList.toggle('active', tags.includes(c.dataset.tag)));
+}
+function getSelectedTags(){
+  return Array.from(document.querySelectorAll('#fTags .chip.active')).map(c=>c.dataset.tag);
+}
+document.getElementById('fTags').addEventListener('click',e=>{
+  const chip=e.target.closest('.chip');
+  if(!chip) return;
+  chip.classList.toggle('active');
+});
 
 // GEOCODING
 let searchTimer=null;
@@ -677,13 +704,15 @@ async function saveSpot(){
   const lng=parseFloat(document.getElementById('fLng').value);
   if(!name)return alert('Inserisci il nome del posto.');
   if(!addr||isNaN(lat)||isNaN(lng))return alert('Seleziona un posto dalla lista.');
+  const tags=getSelectedTags();
+  if(!tags.length)return alert('Scegli almeno un tag.');
   let rating=parseFloat(document.getElementById('fRating').value);
   if(isNaN(rating))rating=8;
   rating=Math.min(10,Math.max(1,rating));
   const btn=document.getElementById('saveBtn');
   btn.textContent='…';btn.disabled=true;
   const data={
-    name,addr,cat:document.getElementById('fCat').value,
+    name,addr,tags,
     price:document.getElementById('fPrice').value,
     stars:rating,
     review:document.getElementById('fReview').value.trim()||'Nessuna recensione.',
